@@ -1,86 +1,125 @@
 from django.conf import settings
-from django.db import models
-
-from apps.blog.constants import (
-    CATEGORY_NAME_MAX_LENGTH,
-    COMMENT_PREVIEW_LENGTH,
-    POST_STATUS_MAX_LENGTH,
-    POST_TITLE_MAX_LENGTH,
-    TAG_NAME_MAX_LENGTH,
+from django.db.models import (
+    CASCADE,
+    SET_NULL,
+    CharField,
+    DateTimeField,
+    ForeignKey,
+    ManyToManyField,
+    Model,
+    SlugField,
+    TextChoices,
+    TextField,
 )
 
 
-class Category(models.Model):
-    name = models.CharField(max_length=CATEGORY_NAME_MAX_LENGTH, unique=True)
-    slug = models.SlugField(unique=True)
+class Category(Model):
+    """Categories database table."""
+
+    NAME_MAX_LEN = 100
+
+    name = CharField(
+        max_length=NAME_MAX_LEN,
+        unique=True,
+    )
+    slug = SlugField(
+        unique=True,
+    )
 
     class Meta:
-        verbose_name_plural = "categories"
-        ordering = ("name",)
+        """Meta data of the table."""
+
+        verbose_name = "Category"
+        verbose_name_plural = "Categories"
 
     def __str__(self) -> str:
         return self.name
 
 
-class Tag(models.Model):
-    name = models.CharField(max_length=TAG_NAME_MAX_LENGTH, unique=True)
-    slug = models.SlugField(unique=True)
+class Tag(Model):
+    """Tags database table."""
 
-    class Meta:
-        ordering = ("name",)
+    NAME_MAX_LEN = 50
+
+    name = CharField(
+        max_length=NAME_MAX_LEN,
+        unique=True,
+    )
+    slug = SlugField(
+        unique=True,
+    )
 
     def __str__(self) -> str:
         return self.name
 
 
-class Post(models.Model):
-    class Status(models.TextChoices):
+class Post(Model):
+    """Posts database table."""
+
+    TITLE_MAX_LEN = 200
+    STATUS_MAX_LEN = 10
+
+    class Status(TextChoices):
         DRAFT = "draft", "Draft"
         PUBLISHED = "published", "Published"
 
-    author = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+    author = ForeignKey(
+        to=settings.AUTH_USER_MODEL,
+        on_delete=CASCADE,
         related_name="posts",
     )
-    title = models.CharField(max_length=POST_TITLE_MAX_LENGTH)
-    slug = models.SlugField(unique=True)
-    body = models.TextField()
-    category = models.ForeignKey(
-        Category,
-        on_delete=models.SET_NULL,
+    title = CharField(
+        max_length=TITLE_MAX_LEN,
+    )
+    slug = SlugField(
+        unique=True,
+    )
+    body = TextField()
+    category = ForeignKey(
+        to=Category,
+        on_delete=SET_NULL,
         null=True,
         blank=True,
         related_name="posts",
     )
-    tags = models.ManyToManyField(Tag, blank=True, related_name="posts")
-    status = models.CharField(
-        max_length=POST_STATUS_MAX_LENGTH,
+    tags = ManyToManyField(
+        to=Tag,
+        blank=True,
+        related_name="posts",
+    )
+    status = CharField(
+        max_length=STATUS_MAX_LEN,
         choices=Status.choices,
         default=Status.DRAFT,
     )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ("-created_at",)
+    created_at = DateTimeField(
+        auto_now_add=True,
+    )
+    updated_at = DateTimeField(
+        auto_now=True,
+    )
 
     def __str__(self) -> str:
         return self.title
 
 
-class Comment(models.Model):
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="comments")
-    author = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+class Comment(Model):
+    """Comments database table."""
+
+    post = ForeignKey(
+        to=Post,
+        on_delete=CASCADE,
         related_name="comments",
     )
-    body = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ("created_at",)
+    author = ForeignKey(
+        to=settings.AUTH_USER_MODEL,
+        on_delete=CASCADE,
+        related_name="comments",
+    )
+    body = TextField()
+    created_at = DateTimeField(
+        auto_now_add=True,
+    )
 
     def __str__(self) -> str:
-        return f"{self.author}: {self.body[:COMMENT_PREVIEW_LENGTH]}"
+        return f"Comment #{self.pk} on {self.post}"
