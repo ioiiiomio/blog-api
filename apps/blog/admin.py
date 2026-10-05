@@ -1,38 +1,85 @@
-from typing import ClassVar
+from django.contrib.admin import ModelAdmin, TabularInline, register
 
-from django.contrib import admin
-
-from apps.blog.models import Category, Comment, Post, Tag
-
-
-@admin.register(Category)
-class CategoryAdmin(admin.ModelAdmin):
-    list_display = ("name", "slug")
-    prepopulated_fields: ClassVar[dict[str, tuple[str, ...]]] = {"slug": ("name",)}
+from apps.blog.models import (
+    Category,
+    Comment,
+    Post,
+    Tag,
+)
 
 
-@admin.register(Tag)
-class TagAdmin(admin.ModelAdmin):
-    list_display = ("name", "slug")
-    prepopulated_fields: ClassVar[dict[str, tuple[str, ...]]] = {"slug": ("name",)}
+@register(Category)
+class CategoryAdmin(ModelAdmin):
+    """Category admin class configuration."""
+
+    list_display = (
+        "id",
+        "name",
+        "slug",
+    )
+    prepopulated_fields = {"slug": ("name",)}
 
 
-class CommentInline(admin.TabularInline):
+@register(Tag)
+class TagAdmin(ModelAdmin):
+    """Tag admin class configuration."""
+
+    list_display = (
+        "id",
+        "name",
+        "slug",
+    )
+    prepopulated_fields = {"slug": ("name",)}
+
+
+class CommentInline(TabularInline):
+    """Shows post comments right on the post page."""
+
     model = Comment
     extra = 0
 
 
-@admin.register(Post)
-class PostAdmin(admin.ModelAdmin):
-    list_display = ("title", "author", "category", "status", "created_at")
-    list_filter = ("status", "category", "tags")
-    search_fields = ("title", "body")
-    prepopulated_fields: ClassVar[dict[str, tuple[str, ...]]] = {"slug": ("title",)}
-    filter_horizontal = ("tags",)
+@register(Post)
+class PostAdmin(ModelAdmin):
+    """Post admin class configuration."""
+
+    list_display = (
+        "id",
+        "title",
+        "author",
+        "category",
+        "status",
+        "created_at",
+    )
+    list_filter = (
+        "status",
+        "category",
+    )
+    search_fields = (
+        "title",
+        "body",
+    )
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+    )
+    filter_horizontal = (
+        "tags",
+    )
+    prepopulated_fields = {"slug": ("title",)}
     inlines = (CommentInline,)
 
 
-@admin.register(Comment)
-class CommentAdmin(admin.ModelAdmin):
-    list_display = ("post", "author", "created_at")
-    search_fields = ("body",)
+@register(Comment)
+class CommentAdmin(ModelAdmin):
+    """Comment admin class configuration."""
+
+    list_display = (
+        "id",
+        "post",
+        "author",
+        "created_at",
+    )
+    search_fields = (
+        "body",
+    )
