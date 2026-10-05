@@ -2,7 +2,8 @@
 ## Hi! This is Zhaniya's Django project repo
 This is a Django 2026 class project repository. All related details will be specified here
 
-### This is the project erd diagram: [Diagram](docs/erd.drawio.png)
+### Project ERD
+![ERD](docs/erd.drawio.png)
 
 ### To create the superuser: 
 1) Run: python manage.py createsuperuser

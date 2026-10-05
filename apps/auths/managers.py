@@ -20,7 +20,7 @@ class UserManager(BaseUserManager["User"]):
             raise ValueError(EMAIL_REQUIRED_ERROR)
         email = self.normalize_email(email).lower()
         user = self.model(email=email, **extra)
-        user.set_password(password)  # hashes; None -> unusable password
+        user.set_password(password)
         user.save(using=self._db)
         return user
 

@@ -1,10 +1,9 @@
-line-length = 88
-target-version = "py312"
-extend-exclude = ["**/migrations", ".venv", "venv"]
+line-length = 100
+extend-exclude = ["**/migrations", ".venv"]
 
 [lint]
-select = ["E", "F", "W", "N", "B", "ANN", "I", "RUF"]
+select = ["E", "F", "W", "N", "ANN"]
 ignore = ["ANN401"]
 
 [lint.per-file-ignores]
-"settings/env/*.py" = ["F403", "F405"]
+"settings/*" = ["F403", "F405"]

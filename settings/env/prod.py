@@ -1,21 +1,15 @@
-from settings.base import *
-from settings.conf import (
-    BLOG_DB_HOST,
-    BLOG_DB_NAME,
-    BLOG_DB_PASSWORD,
-    BLOG_DB_PORT,
-    BLOG_DB_USER,
-)
+from settings.base import *  # noqa
 
-DEBUG: bool = False
 
-DATABASES: dict = {
+DEBUG = False
+
+DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": BLOG_DB_NAME,
-        "USER": BLOG_DB_USER,
-        "PASSWORD": BLOG_DB_PASSWORD,
-        "HOST": BLOG_DB_HOST,
-        "PORT": BLOG_DB_PORT,
+        "NAME": DB_NAME,
+        "USER": DB_USER,
+        "PASSWORD": DB_PASSWORD,
+        "HOST": DB_HOST,
+        "PORT": DB_PORT,
     }
 }

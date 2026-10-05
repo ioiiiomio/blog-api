@@ -1,6 +1,7 @@
 from django.contrib import admin
-from django.urls import URLPattern, URLResolver, path
+from django.urls import path
 
-urlpatterns: list[URLPattern | URLResolver] = [
+
+urlpatterns = [
     path("admin/", admin.site.urls),
 ]
