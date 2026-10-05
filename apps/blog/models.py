@@ -13,9 +13,9 @@ from django.db.models import (
 )
 
 
+# database tables classes
 class Category(Model):
-    """Categories database table."""
-
+    # categories table
     NAME_MAX_LEN = 100
 
     name = CharField(
@@ -27,8 +27,7 @@ class Category(Model):
     )
 
     class Meta:
-        """Meta data of the table."""
-
+        # meta data for admin
         verbose_name = "Category"
         verbose_name_plural = "Categories"
 
@@ -37,8 +36,7 @@ class Category(Model):
 
 
 class Tag(Model):
-    """Tags database table."""
-
+    # tags table
     NAME_MAX_LEN = 50
 
     name = CharField(
@@ -54,8 +52,7 @@ class Tag(Model):
 
 
 class Post(Model):
-    """Posts database table."""
-
+    # posts table
     TITLE_MAX_LEN = 200
     STATUS_MAX_LEN = 10
 
@@ -104,8 +101,7 @@ class Post(Model):
 
 
 class Comment(Model):
-    """Comments database table."""
-
+    # comments table
     post = ForeignKey(
         to=Post,
         on_delete=CASCADE,
