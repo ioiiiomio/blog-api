@@ -10,8 +10,7 @@ from apps.blog.models import (
 
 @register(Category)
 class CategoryAdmin(ModelAdmin):
-    """Category admin class configuration."""
-
+    # admin category conf
     list_display = (
         "id",
         "name",
@@ -22,8 +21,7 @@ class CategoryAdmin(ModelAdmin):
 
 @register(Tag)
 class TagAdmin(ModelAdmin):
-    """Tag admin class configuration."""
-
+    # tag admin conf
     list_display = (
         "id",
         "name",
@@ -33,16 +31,14 @@ class TagAdmin(ModelAdmin):
 
 
 class CommentInline(TabularInline):
-    """Shows post comments right on the post page."""
-
+    # to show post comments on post page
     model = Comment
     extra = 0
 
 
 @register(Post)
 class PostAdmin(ModelAdmin):
-    """Post admin class configuration."""
-
+    # post admin class
     list_display = (
         "id",
         "title",
@@ -63,23 +59,18 @@ class PostAdmin(ModelAdmin):
         "created_at",
         "updated_at",
     )
-    filter_horizontal = (
-        "tags",
-    )
+    filter_horizontal = ("tags",)
     prepopulated_fields = {"slug": ("title",)}
     inlines = (CommentInline,)
 
 
 @register(Comment)
 class CommentAdmin(ModelAdmin):
-    """Comment admin class configuration."""
-
+    # comment admin class
     list_display = (
         "id",
         "post",
         "author",
         "created_at",
     )
-    search_fields = (
-        "body",
-    )
+    search_fields = ("body",)
