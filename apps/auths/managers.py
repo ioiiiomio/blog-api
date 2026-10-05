@@ -13,8 +13,6 @@ if TYPE_CHECKING:
 
 
 class UserManager(BaseUserManager["User"]):
-    """Manager for the custom User model with email as the login field."""
-
     use_in_migrations = True
 
     def _create_user(self, email: str, password: str | None, **extra: Any) -> "User":

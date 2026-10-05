@@ -16,7 +16,7 @@ class Category(models.Model):
 
     class Meta:
         verbose_name_plural = "categories"
-        ordering = ["name"]
+        ordering = ("name",)
 
     def __str__(self) -> str:
         return self.name
@@ -27,7 +27,7 @@ class Tag(models.Model):
     slug = models.SlugField(unique=True)
 
     class Meta:
-        ordering = ["name"]
+        ordering = ("name",)
 
     def __str__(self) -> str:
         return self.name
@@ -63,7 +63,7 @@ class Post(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering = ("-created_at",)
 
     def __str__(self) -> str:
         return self.title
@@ -80,7 +80,7 @@ class Comment(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["created_at"]
+        ordering = ("created_at",)
 
     def __str__(self) -> str:
         return f"{self.author}: {self.body[:COMMENT_PREVIEW_LENGTH]}"

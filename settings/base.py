@@ -1,5 +1,3 @@
-"""Shared settings for all environments."""
-
 from pathlib import Path
 
 from settings.conf import BLOG_ALLOWED_HOSTS, BLOG_SECRET_KEY

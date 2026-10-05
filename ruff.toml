@@ -1,9 +1,9 @@
 line-length = 88
 target-version = "py312"
-exclude = ["**/migrations/*"]
+extend-exclude = ["**/migrations", ".venv", "venv"]
 
 [lint]
-select = ["E", "F", "W", "N", "B", "ANN"]
+select = ["E", "F", "W", "N", "B", "ANN", "I", "RUF"]
 ignore = ["ANN401"]
 
 [lint.per-file-ignores]

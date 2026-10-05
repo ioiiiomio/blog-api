@@ -6,8 +6,6 @@ from apps.auths.managers import UserManager
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    """Custom user that logs in with email instead of username."""
-
     email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=FIRST_NAME_MAX_LENGTH)
     last_name = models.CharField(max_length=LAST_NAME_MAX_LENGTH)
@@ -19,12 +17,12 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     USERNAME_FIELD = "email"
     EMAIL_FIELD = "email"
-    REQUIRED_FIELDS = ["first_name", "last_name"]
+    REQUIRED_FIELDS = ("first_name", "last_name")
 
     class Meta:
         verbose_name = "user"
         verbose_name_plural = "users"
-        ordering = ["-date_joined"]
+        ordering = ("-date_joined",)
 
     def __str__(self) -> str:
         return self.email

@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 05.10.2026 - 3/Project upload
+### Added
+- Added the project according to the hw1
+- Added the docs/erd file that shows the project structure
+
 ## 04.10.2026 - 2/Project Structure setup
 ### Added
 - Added the project files according to the hw1 requirement structure
