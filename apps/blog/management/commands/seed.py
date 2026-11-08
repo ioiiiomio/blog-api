@@ -27,7 +27,7 @@ SEED_PASSWORD = "SeedPass123!"
 EMAIL_DOMAIN = "example.com"
 INACTIVE_USERS_SHARE = 0.1
 STAFF_USERS_SHARE = 0.05
-
+MIN_FLAGGED_USERS = 1
 
 CATEGORY_NAMES = [
     "Python",
@@ -157,13 +157,14 @@ class Command(BaseCommand):
         if count == 0:
             return 0
 
-        # hashing is slow on purpose, so do it only once
         hashed_password = make_password(SEED_PASSWORD)
-        # emails already in the db, so we don't repeat them
+
         used_emails = set(User.objects.values_list("email", flat=True))
+        inactive_indexes = self._pick_indexes(count, INACTIVE_USERS_SHARE)
+        staff_indexes = self._pick_indexes(count, STAFF_USERS_SHARE)
         users = []
 
-        for _ in range(count):
+        for index in range(count):
             first_name = self.fake.first_name()
             last_name = self.fake.last_name()
             users.append(
@@ -172,16 +173,20 @@ class Command(BaseCommand):
                     first_name=first_name,
                     last_name=last_name,
                     password=hashed_password,
-                    is_active=random.random() >= INACTIVE_USERS_SHARE,
-                    is_staff=random.random() < STAFF_USERS_SHARE,
+                    is_active=index not in inactive_indexes,
+                    is_staff=index in staff_indexes,
                 )
             )
 
-        # one INSERT for all users instead of .save() in a loop
         return len(User.objects.bulk_create(users))
 
+    def _pick_indexes(self, count: int, share: float) -> set[int]:
+
+        flagged = max(MIN_FLAGGED_USERS, round(count * share))
+        return set(random.sample(range(count), min(flagged, count)))
+
     def _unique_email(self, first_name: str, last_name: str, used: set[str]) -> str:
-        # build first.last@domain, add a number if the mail is taken
+
         local_part = ".".join(
             re.sub(r"[^a-z]", "", name.lower()) for name in (first_name, last_name)
         )
@@ -247,7 +252,6 @@ class Command(BaseCommand):
 
         created_posts = Post.objects.bulk_create(posts)
 
-        # after bulk_create posts have ids, so tags can be attached
         max_tags = min(MAX_TAGS_PER_POST, len(tags))
         for post in created_posts:
             post.tags.set(random.sample(tags, random.randint(MIN_TAGS_PER_POST, max_tags)))
@@ -255,7 +259,7 @@ class Command(BaseCommand):
         return len(created_posts)
 
     def _unique_slug(self, title: str, used: set[str]) -> str:
-        # slugify the title, add -2, -3, ... if the slug is taken
+
         base = slugify(title)[:SLUG_MAX_LEN].strip("-")
         slug = base
         suffix = DUPLICATE_SUFFIX_START
@@ -300,7 +304,7 @@ class Command(BaseCommand):
         return len(Comment.objects.bulk_create(comments))
 
     def _write_line(self, label: str, count: int) -> None:
-        # print one summary line, e.g. "Users:       50 created"
+
         self.stdout.write(
             f"{label:<{SUMMARY_LABEL_WIDTH}}{count:>{SUMMARY_COUNT_WIDTH}} created"
         )

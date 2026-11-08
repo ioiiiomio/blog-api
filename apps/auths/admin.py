@@ -15,6 +15,7 @@ from django.http import HttpRequest
 
 from apps.auths.models import User
 
+
 class BlogUserCreationForm(UserCreationForm):
     usable_password = None
 
@@ -27,10 +28,12 @@ class BlogUserCreationForm(UserCreationForm):
         self.fields["password1"].required = True
         self.fields["password2"].required = True
 
+
 class BlogUserChangeForm(UserChangeForm):
     class Meta:
         model = User
         fields = "__all__"
+
 
 @register(User)
 class UserAdmin(BaseUserAdmin, ModelAdmin):
@@ -59,7 +62,7 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
     readonly_fields = ("last_login",)
     filter_horizontal = ("groups", "user_permissions")
     actions = ("activate_users", "deactivate_users")
-    lists_per_page = 50
+    list_per_page = 50
 
     fieldsets = (
     (
@@ -132,74 +135,9 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
         updated = queryset.update(is_active=False)
         self.message_user(request, f"{updated} user(s) deactivated.", messages.WARNING)
 
-    site.unregister(Group)
-
-    @register(Group)
-    class GroupAdmin(BaseGroupAdmin, ModelAdmin):
-        pass
-
-    search_fields = (
-        "email",
-        "first_name",
-        "last_name",
-    )
-    ordering = (
-        "id",
-    )
-    readonly_fields = (
-        "last_login",
-    )
-    filter_horizontal = (
-        "groups",
-        "user_permissions",
-    )
-    fieldsets = (
-        (
-            "General information",
-            {
-                "fields": (
-                    "email",
-                    "password",
-                    ("first_name", "last_name"),
-                )
-            },
-        ),
-        (
-            "Permissions",
-            {
-                "fields": (
-                    ("is_staff", "is_active", "is_superuser"),
-                    "groups",
-                    "user_permissions",
-                )
-            },
-        ),
-        (
-            "Date and time information",
-            {
-                "fields": (
-                    "last_login",
-                )
-            },
-        ),
-    )
-    # form for the "Add user" page
-    add_fieldsets = (
-        (
-            None,
-            {
-                "fields": (
-                    "email",
-                    ("first_name", "last_name"),
-                    "password1",
-                    "password2",
-                )
-            },
-        ),
-    )
-    list_per_page = 50
 
 site.unregister(Group)
+
 
 @register(Group)
 class GroupAdmin(BaseGroupAdmin, ModelAdmin):

@@ -10,8 +10,10 @@ DATABASES = {
     }
 }
 
+SQL_LOG_LEVEL = "INFO"
+
 LOGGING = {
     "version": 1,
     "handlers": {"console": {"class": "logging.StreamHandler"}},
-    "loggers": {"django.db.backends": {"handlers": ["console"], "level": "DEBUG"}},
+    "loggers": {"django.db.backends": {"handlers": ["console"], "level": SQL_LOG_LEVEL}},
 }
