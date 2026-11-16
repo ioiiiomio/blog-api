@@ -20,9 +20,13 @@ INDENT = "  "
 SAMPLE_CATEGORY_SLUG = "python"
 SAMPLE_CATEGORY_SLUGS = ["python", "django", "devops"]
 SAMPLE_TAG_SLUG = "docker"
+SAMPLE_MERGE_SOURCE_SLUG = "java"
+SAMPLE_MERGE_TARGET_SLUG = "python"
+SAMPLE_TAG_NAME = "Django ORM"
 SAMPLE_PAGE = 2
 SAMPLE_DAYS = 30
 SAMPLE_MIN_POSTS = 10
+SAMPLE_OLD_DRAFT_DAYS = 30
 FULL_NAME_LAST_NAME_PART = 3
 TAGS_IN_PAIR = 2
 
@@ -56,7 +60,7 @@ def _sample_title_word() -> str:
 
 
 def _sample_full_name_part() -> str:
-    # like "john smi" for John Smith
+    # like "mary jane" for Mary Jane
     names = User.objects.filter(is_superuser=False).values_list("first_name", "last_name").first()
     if names is None:
         return ""
@@ -118,6 +122,10 @@ QUERY_ARGUMENTS: dict[int, dict[str, Any]] = {
     22: {"text": _sample_title_word},
     34: {"min_posts": SAMPLE_MIN_POSTS},
     37: {"text": _sample_full_name_part},
+    40: {"name": SAMPLE_TAG_NAME},
+    41: {"days": SAMPLE_OLD_DRAFT_DAYS},
+    42: {"category_slug": SAMPLE_CATEGORY_SLUG, "tag_slug": SAMPLE_TAG_SLUG},
+    43: {"source_slug": SAMPLE_MERGE_SOURCE_SLUG, "target_slug": SAMPLE_MERGE_TARGET_SLUG},
 }
 
 
@@ -169,7 +177,6 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SQL_KEYWORD(captured["sql"]))
 
         if rows is not None:
-            # names added with annotate(), like post_count
             self._write_rows(rows, list(result.query.annotations))
         elif isinstance(result, list):
             self._write_rows(result, [])
@@ -185,7 +192,6 @@ class Command(BaseCommand):
         self.stdout.write(f"{INDENT}({len(rows)} {'row' if len(rows) == 1 else 'rows'})")
 
     def _format_row(self, row: Any, annotations: list[str]) -> str:
-        # objects get their annotate() values next to them: Python {'post_count': 16}
         if isinstance(row, Model):
             if not annotations:
                 return str(row)

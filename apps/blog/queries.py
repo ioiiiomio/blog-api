@@ -2,21 +2,27 @@ from collections.abc import Callable
 from datetime import date, timedelta
 from typing import Any
 
+from django.db import transaction
 from django.db.models import (
     Avg,
     Case,
     Count,
     DateField,
+    Exists,
     F,
     Max,
     Min,
+    OuterRef,
+    Prefetch,
     Q,
     QuerySet,
+    Subquery,
     Value,
     When,
 )
 from django.db.models.functions import Coalesce, Concat, Round, TruncMonth
 from django.utils import timezone
+from django.utils.text import slugify
 
 from apps.auths.models import User
 from apps.blog.models import Category, Comment, Post, Tag
@@ -30,7 +36,7 @@ FIRST_PAGE = 1
 # level 4
 EDITED_AFTER = timedelta(hours=1)
 
-# level 5
+# level 5, level 10
 UNCATEGORIZED = "Uncategorized"
 
 # level 6
@@ -47,6 +53,13 @@ NORMAL_MIN_COMMENTS = 3
 POPULARITY_HOT = "hot"
 POPULARITY_NORMAL = "normal"
 POPULARITY_QUIET = "quiet"
+
+# level 10
+FEED_LIMIT = 50
+FEED_SEPARATOR = " | "
+POSTS_WITH_TAGS_LIMIT = 20
+TITLE_SEPARATOR = ": "
+TAGS_SEPARATOR = ", "
 
 
 def _published() -> QuerySet[Post]:
@@ -320,6 +333,119 @@ def posts_with_popularity() -> QuerySet[Post]:
     )
 
 
+# level 9 - changing data
+def get_or_create_tag(name: str) -> tuple[Tag, bool]:
+    """Tag with this name, created if it doesn't exist. True = it was created."""
+    # search by slug: "Django ORM" and "django orm" have the same slug
+    return Tag.objects.get_or_create(slug=slugify(name), defaults={"name": name})
+
+
+def publish_old_drafts(days: int) -> int:
+    """Publish drafts older than `days` days in one query, returns how many changed."""
+    now = timezone.now()
+    # update() doesn't call save(), so auto_now doesn't work, updated_at is set by hand
+    return Post.objects.filter(
+        status=Post.Status.DRAFT, created_at__lt=now - timedelta(days=days)
+    ).update(status=Post.Status.PUBLISHED, updated_at=now)
+
+
+def tag_category_posts(category_slug: str, tag_slug: str) -> int:
+    """Add the tag to every post of the category, returns how many posts it has."""
+    tag = Tag.objects.filter(slug=tag_slug).first()
+    if tag is None:
+        return 0
+    post_ids = list(Post.objects.filter(category__slug=category_slug).values_list("id", flat=True))
+    # add() skips posts that already have this tag
+    tag.posts.add(*post_ids)
+    return len(post_ids)
+
+
+def merge_categories(source_slug: str, target_slug: str) -> int:
+    """Move posts from source to target category, delete source, returns how many moved."""
+    source = Category.objects.filter(slug=source_slug).first()
+    target = Category.objects.filter(slug=target_slug).first()
+    if source is None or target is None or source == target:
+        return 0
+    with transaction.atomic():
+        # move first: on_delete=SET_NULL would leave the posts with no category
+        moved = Post.objects.filter(category=source).update(category=target)
+        source.delete()
+    return moved
+
+
+def delete_inactive_users_comments() -> int:
+    """Delete all comments of inactive users, returns how many were deleted."""
+    _, deleted_per_model = Comment.objects.filter(author__is_active=False).delete()
+    return deleted_per_model.get(Comment._meta.label, 0)
+
+
+# level 10 - select_related and prefetch_related
+def published_feed() -> list[str]:
+    """50 newest published posts as "title | author email | category" (1 query)."""
+    # select_related = join, so author and category come in the same query
+    posts = published_posts().select_related("author", "category")[:FEED_LIMIT]
+    return [
+        FEED_SEPARATOR.join(
+            (
+                post.title,
+                post.author.email,
+                post.category.name if post.category else UNCATEGORIZED,
+            )
+        )
+        for post in posts
+    ]
+
+
+def newest_posts_with_tags() -> list[str]:
+    """20 newest posts as "title: tag1, tag2" (2 queries)."""
+    # prefetch_related = 1 extra query for the tags of all posts
+    posts = Post.objects.prefetch_related(
+        Prefetch("tags", queryset=Tag.objects.order_by("name"))
+    ).order_by("-created_at")[:POSTS_WITH_TAGS_LIMIT]
+    return [
+        f"{post.title}{TITLE_SEPARATOR}{TAGS_SEPARATOR.join(tag.name for tag in post.tags.all())}"
+        for post in posts
+    ]
+
+
+def categories_with_published_posts() -> dict[str, list[str]]:
+    """{category name: [published post titles, newest first]} (2 queries)."""
+    # filter inside Prefetch, posts.filter() later would be 1 query per category
+    categories = Category.objects.prefetch_related(
+        Prefetch("posts", queryset=published_posts(), to_attr="published_posts")
+    ).order_by("name")
+    return {
+        category.name: [post.title for post in category.published_posts] for category in categories
+    }
+
+
+# level 11 - subquery and exists
+def posts_with_last_comment() -> QuerySet[Post]:
+    """Published posts with last_comment, the text of the newest comment (or None)."""
+    newest_comment = (
+        Comment.objects.filter(post=OuterRef("pk")).order_by("-created_at", "-pk").values("body")
+    )
+    return published_posts().annotate(last_comment=Subquery(newest_comment[:1]))
+
+
+def posts_with_staff_comments() -> QuerySet[Post]:
+    """Posts with at least one comment from a staff user."""
+    staff_comments = Comment.objects.filter(post=OuterRef("pk"), author__is_staff=True)
+    return Post.objects.filter(Exists(staff_comments)).order_by("-created_at")
+
+
+def users_with_draft_as_latest_post() -> QuerySet[User]:
+    """Users whose newest post is a draft, with latest_post_status."""
+    latest_post = (
+        Post.objects.filter(author=OuterRef("pk")).order_by("-created_at", "-pk").values("status")
+    )
+    return (
+        User.objects.annotate(latest_post_status=Subquery(latest_post[:1]))
+        .filter(latest_post_status=Post.Status.DRAFT)
+        .order_by("email")
+    )
+
+
 QUERIES: dict[int, Callable[..., Any]] = {
     1: categories_by_name,
     2: published_posts,
@@ -360,4 +486,15 @@ QUERIES: dict[int, Callable[..., Any]] = {
     37: search_users_by_full_name,
     38: published_posts_per_month,
     39: posts_with_popularity,
+    40: get_or_create_tag,
+    41: publish_old_drafts,
+    42: tag_category_posts,
+    43: merge_categories,
+    44: delete_inactive_users_comments,
+    45: published_feed,
+    46: newest_posts_with_tags,
+    47: categories_with_published_posts,
+    48: posts_with_last_comment,
+    49: posts_with_staff_comments,
+    50: users_with_draft_as_latest_post,
 }
