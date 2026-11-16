@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 16.11.2026 - 5/Homework 3
+### Added
+- Added 50 ORM queries in apps/blog/queries.py
+- Added the queries command with --number and --sql, it shows the result and the number of SQL queries
+- Updated the readme with the queries command
+
+### Changed
+- Seed makes realistic dates for posts and comments
+
 ## 09.11.2026 - 4/Homework 2
 ### Added
 - Added the seed command that fills the db with fake users, categories, tags, posts and comments
