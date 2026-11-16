@@ -14,6 +14,8 @@ from django.utils.text import slugify
 
 from apps.blog.models import Category, Comment, Post, Tag
 
+from datetime import timedelta, datetime
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -76,6 +78,13 @@ MIN_TAGS_PER_POST = 0
 MAX_TAGS_PER_POST = 5
 SLUG_MAX_LEN = Post._meta.get_field("slug").max_length
 
+# dates
+POST_DATES_DAYS = 365
+EDITED_POSTS_SHARE = 0.3
+EDIT_MIN_DAYS = 30
+EDIT_MAX_DAYS = 30
+SECONDS_IN_DAY = int(timedelta(days=1).total_seconds())
+
 COMMENT_MIN_SENTENCES = 1
 COMMENT_MAX_SENTENCES = 3
 
@@ -121,11 +130,20 @@ class Command(BaseCommand):
             if clear:
                 self._clear()
 
+            self.now = timezone.now()
+
             created_users = self._create_users(users_count)
             created_categories = self._create_named(Category, CATEGORY_NAMES)
             created_tags = self._create_named(Tag, TAG_NAMES)
-            created_posts = self._create_posts(posts_count)
-            created_comments = self._create_comments(comments_count)
+            old_published_posts = self._published_posts()
+            new_posts = self._create_posts(posts_count)
+            new_published_posts = [
+                post for post in new_posts if post.status == Post.Status.PUBLISHED
+            ]
+            created_comments = self._create_comments(
+                comments_count, old_published_posts + new_published_posts
+            )
+            created_posts = len(new_posts)
 
         elapsed = time.perf_counter() - started_at
 
@@ -214,10 +232,13 @@ class Command(BaseCommand):
         # users that can be authors, superusers are skipped so admin gets no fake data
         return list(User.objects.filter(is_superuser=False).values_list("id", flat=True))
 
-    def _create_posts(self, count: int) -> int:
+    def _published_posts(self) -> list[Post]:
+        return list(Post.objects.filter(status=Post.Status.PUBLISHED).only("id", "created_at"))
+
+    def _create_posts(self, count: int) -> list[Post]:
         # create posts with uniq slugs, random status, category and tags
         if count == 0:
-            return 0
+            return []
 
         author_ids = self._author_ids()
         if not author_ids:
@@ -256,7 +277,26 @@ class Command(BaseCommand):
         for post in created_posts:
             post.tags.set(random.sample(tags, random.randint(MIN_TAGS_PER_POST, max_tags)))
 
-        return len(created_posts)
+        for post in created_posts:
+            post.created_at = self._random_post_date()
+            post.updated_at = self._random_update_date(post.created_at)
+        Post.objects.bulk_update(created_posts, ["created_at", "updated_at"])
+
+        Post.objects.bulk_update(created_posts, ["created_at", "updated_at"])
+        return created_posts
+
+    # rand dates for posts
+    def _random_post_date(self) -> datetime:
+        seconds_ago = random.randint(0, POST_DATES_DAYS * SECONDS_IN_DAY)
+        return self.now - timedelta(seconds=seconds_ago)
+
+    def _random_update_date(self, created_at: datetime) -> datetime:
+        if random.random() >= EDITED_POSTS_SHARE:
+            return created_at
+        edit_delay = timedelta(
+            seconds=random.randint(EDIT_MIN_DAYS * SECONDS_IN_DAY, EDIT_MAX_DAYS * SECONDS_IN_DAY)
+        )
+        return min(created_at + edit_delay, self.now)
 
     def _unique_slug(self, title: str, used: set[str]) -> str:
 
@@ -272,8 +312,8 @@ class Command(BaseCommand):
         used.add(slug)
         return slug
 
-    def _create_comments(self, count: int) -> int:
-        # create comments only on published posts
+    def _create_comments(self, count: int, published_posts: list[Post]) -> int:
+        # create comments only on published posts, each one after its post
         if count == 0:
             return 0
 
@@ -281,17 +321,12 @@ class Command(BaseCommand):
         if not author_ids:
             raise CommandError("Cannot create comments: there are no users. Use --users.")
 
-        post_ids = list(
-            Post.objects.filter(status=Post.Status.PUBLISHED).values_list("id", flat=True)
-        )
-        if not post_ids:
-            raise CommandError(
-                "Cannot create comments: there are no published posts. Use --posts."
-            )
+        if not published_posts:
+            raise CommandError("Cannot create comments: there are no published posts. Use --posts.")
 
         comments = [
             Comment(
-                post_id=random.choice(post_ids),
+                post=random.choice(published_posts),
                 author_id=random.choice(author_ids),
                 body=" ".join(
                     self.fake.sentences(
@@ -301,10 +336,16 @@ class Command(BaseCommand):
             )
             for _ in range(count)
         ]
-        return len(Comment.objects.bulk_create(comments))
+        created_comments = Comment.objects.bulk_create(comments)
+
+        # comment.post is the object from memory, so this loop makes no queries
+        for comment in created_comments:
+            post_created_at = comment.post.created_at
+            comment.created_at = post_created_at + (self.now - post_created_at) * random.random()
+        Comment.objects.bulk_update(created_comments, ["created_at"])
+
+        return len(created_comments)
 
     def _write_line(self, label: str, count: int) -> None:
 
-        self.stdout.write(
-            f"{label:<{SUMMARY_LABEL_WIDTH}}{count:>{SUMMARY_COUNT_WIDTH}} created"
-        )
+        self.stdout.write(f"{label:<{SUMMARY_LABEL_WIDTH}}{count:>{SUMMARY_COUNT_WIDTH}} created")
