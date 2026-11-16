@@ -76,6 +76,45 @@ Some notes:
 - --clear deletes everything except superusers, so you don't lose your admin account
 - If something is wrong (negative number, no users, no published posts) the command shows an error and saves nothing
 
+## Queries
+50 Django ORM queries are in `apps/blog/queries.py` (one function per query, the `QUERIES` dict at the bottom maps a number to a function).
+The `queries` command runs them and shows the result and how many SQL queries were made.
+
+Fill the db first:
+```bash
+python3 manage.py seed --clear
+```
+
+| Run                                          | What it does                                    |
+|----------------------------------------------|-------------------------------------------------|
+| `python3 manage.py queries`                  | Runs all queries except 40-44 (they change data) |
+| `python3 manage.py queries --number 31`      | Runs only query 31, works for 40-44 too         |
+| `python3 manage.py queries --number 6 --sql` | Also shows the SQL                              |
+
+Example:
+```
+$ python3 manage.py queries --number 31
+#31 categories_with_post_count — 1 SQL query
+  Cyber Security {'post_count': 13}
+  C++ {'post_count': 12}
+  Career {'post_count': 11}
+  JavaScript {'post_count': 11}
+  DevOps {'post_count': 9}
+  (10 rows)
+
+$ python3 manage.py queries --number 6 --sql
+#6 has_drafts — 1 SQL query
+SELECT 1 AS "a" FROM "blog_post" WHERE "blog_post"."status" = 'draft' LIMIT 1
+  True
+```
+
+Some notes:
+- Lists and querysets show the first 5 rows and the total count, objects also show their annotate() values
+- Queries with arguments (slug, email, days...) get sample values from `QUERY_ARGUMENTS` in the command, values from the db are read before counting starts
+- Every read query makes 1 SQL query, 46 and 47 make 2 (prefetch_related)
+- 40-44 change the data, run `python3 manage.py seed --clear` after them
+- Query 26 is always empty and query 24 shows about 30% of posts, this checks the seed dates
+
 ## Admin
 The admin panel is made with Django Unfold.
 
