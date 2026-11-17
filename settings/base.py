@@ -1,5 +1,6 @@
 import os
 from collections.abc import Callable
+from datetime import timedelta
 
 from django.http import HttpRequest
 from django.urls import reverse_lazy
@@ -244,4 +245,20 @@ UNFOLD = {
             ],
         },
     ],
+}
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+}
+
+ACCESS_TOKEN_LIFETIME = timedelta(minutes=15)
+REFRESH_TOKEN_LIFETIME = timedelta(days=1)
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": ACCESS_TOKEN_LIFETIME,
+    "REFRESH_TOKEN_LIFETIME": REFRESH_TOKEN_LIFETIME,
+    "AUTH_HEADER_TYPES": ("Bearer",),
 }
