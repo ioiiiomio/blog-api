@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## 17.11.2026 - 6/Homework 4 (Part 1: users and JWT)
+### Added
+- Added Django REST Framework and Simple JWT, all API URLs have no / at the end
+- Added the auths API at /api/auths/v1/: register, login, token refresh and the user's own profile (users/me)
+- Register checks the password with AUTH_PASSWORD_VALIDATORS, saves the email in lower case and hashes the password with create_user()
+- Login works with the email in any case, a wrong email, a wrong password or an inactive user all get the same "Invalid email or password." answer
+- Login puts the tokens into the X-Access-Token and X-Refresh-Token response headers, token refresh puts the new access token into X-Access-Token
+- users/me shows the profile, PATCH changes only first_name and last_name
+- Added ValidationMixin in apps/common/mixins.py, "check the data or answer 400" is written once for all ViewSets
+- Access token lives 15 minutes, refresh token 1 day
+
+### Changed
+- The default permission is IsAuthenticated, public endpoints (register, login, token refresh) set their own
+- Added djangorestframework-simplejwt, redis and celery[redis] to requirements
+
 ## 16.11.2026 - 5/Homework 3
 ### Added
 - Added 50 ORM queries in apps/blog/queries.py
